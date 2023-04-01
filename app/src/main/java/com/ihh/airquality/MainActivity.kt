@@ -52,6 +52,13 @@ class MainActivity : AppCompatActivity() {
         if (latitude != null && longtitude != null){
             //1. 현재 위치를 가져오고 UI를 업데이트
             val address = getCurrentAddress(latitude, longtitude)
+            //address가 null이 아닌 경우에 실행
+            address?.let {
+                //thoroughfare : 역삼1동 2동 등의 주소
+                //countryName : 나라 이름
+                binding.tvLocationTitle.text = "${it.thoroughfare}"
+                binding.tvLocationSubtitle.text = "${it.countryName} ${it.adminArea}"
+            }
             //2. 미세먼지 농도를 가져오고 UI를 업데이트
         }
         //위도, 경도 둘 중 하나라도 null 값이면
@@ -157,7 +164,8 @@ class MainActivity : AppCompatActivity() {
             }
             //사용자가 권한을 전부 수락해서 위치 값을 가져올 수 있음
             if (checkResult) {
-
+                //위치 정보를 가져올 때 가져온 위치정보를 토대로 ui를 업데이트 해줌
+                updateUI()
             }
             //사용자가 권한을 거부했을 경우 앱을 종료
             else {
