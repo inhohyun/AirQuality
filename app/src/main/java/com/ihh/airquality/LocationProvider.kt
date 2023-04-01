@@ -84,14 +84,14 @@ class LocationProvider (val context : Context){
         return location
     }
         //location을 기반으로 위도를 가져오는 함수
-    fun getLocationLatitude(): Double{
+    fun getLocationLatitude(): Double?{
 
-            //location의 값이 null일경우 위도는 0.0 리턴, 아니면 latitude(위도) 값 리턴
-        return location?.latitude ?: 0.0
+            //location의 값이 null일경우 위도, 경도도 NULL이 들어옴
+        return location?.latitude
     }
         //loction을 기반으로 경도를 가져오는 함수
-    fun getLocationLongitude() : Double{
-        return location?.longitude ?: 0.0
+    fun getLocationLongitude() : Double?{
+        return location?.longitude
     }
 
 }

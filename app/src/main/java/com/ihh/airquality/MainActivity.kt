@@ -4,22 +4,25 @@ import android.app.Activity
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Address
+import android.location.Geocoder
 import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.ihh.airquality.databinding.ActivityMainBinding
+import java.io.IOException
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
-
+    lateinit var locationProvider : LocationProvider
     //권한을 요청받을 상수값
     private val PERMISSION_REQUEST_CODE = 100
     val REQUIRED_PERMISSIONS = arrayOf(
@@ -34,9 +37,59 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         checkAllPermissions()
-
+        updateUI()
 
     }
+
+    private fun updateUI(){
+        //MainActivity의 context를 넣어서 이를 기반으로 만들어둔 LocationProvider 클래스의 함수를 활용해서 위도, 경도를 저장
+        locationProvider = LocationProvider(this@MainActivity)
+
+        //위도, 경도 정보 가져오기
+        val latitude : Double? = locationProvider.getLocationLatitude()
+        val longtitude : Double? = locationProvider.getLocationLongitude()
+
+        if (latitude != null && longtitude != null){
+            //1. 현재 위치를 가져오고 UI를 업데이트
+            val address = getCurrentAddress(latitude, longtitude)
+            //2. 미세먼지 농도를 가져오고 UI를 업데이트
+        }
+        //위도, 경도 둘 중 하나라도 null 값이면
+        else{
+            Toast.makeText(this, "위도, 경도 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+        }
+
+    }
+    //지오코딩 : 위도와 경도를 가지고 지명 이름 가져오기
+    private fun getCurrentAddress(latitude: Double, longitude:Double) : Address? {
+        //지오코더 객체를 생성, getDefault를 활용해 휴대폰의 디폴트 위치를 가져옴(대한민국) -> 헷갈리니 그냥 korea로 변경
+        val geoCoder = Geocoder(this, Locale.KOREA)
+        //지오코딩을 활용해 위치정보의 지명을 가져올 때는 여러 개를 받음 -> List로 저장
+        val addresses : List<Address>?
+        //위도, 경도 사용해서 지명 가져오기, 최대 7개까지만 받아오기 -> 어차피 하나만 쓸꺼긴 함
+        addresses = try {
+            geoCoder.getFromLocation(latitude,longitude, 7)
+        } catch (ioException : IOException){
+            //값이 들어오지 않은 경우
+            Toast.makeText(this, "지오코더 서비스를 이용불가 합니다.", Toast.LENGTH_SHORT).show()
+            return null
+        } catch (illegalArgumentException : java.lang.IllegalArgumentException){
+            //들어온 값이 잘못된 경우
+            Toast.makeText(this, "잘못된 위도, 경도 입니다.", Toast.LENGTH_SHORT).show()
+            return null
+        }
+
+        //위도, 경도 값에는 문제가 없으나 주소가 없는 경우
+        if(addresses == null || addresses.size == 0){
+            Toast.makeText(this, "주소가 발견되지 않았습니다.", Toast.LENGTH_SHORT).show()
+            return null
+
+        }
+
+
+        return addresses[0]
+    }
+
 
     private fun checkAllPermissions() {
         //GPS가 꺼져있을 때 함수호출
