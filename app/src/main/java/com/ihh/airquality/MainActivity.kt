@@ -31,7 +31,8 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
     lateinit var binding: ActivityMainBinding
-    lateinit var locationProvider : LocationProvider
+    lateinit var locationProvider: LocationProvider
+
     //권한을 요청받을 상수값
     private val PERMISSION_REQUEST_CODE = 100
     val REQUIRED_PERMISSIONS = arrayOf(
@@ -50,15 +51,15 @@ class MainActivity : AppCompatActivity() {
         setRefreshButton()
     }
 
-    private fun updateUI(){
+    private fun updateUI() {
         //MainActivity의 context를 넣어서 이를 기반으로 만들어둔 LocationProvider 클래스의 함수를 활용해서 위도, 경도를 저장
         locationProvider = LocationProvider(this@MainActivity)
 
         //위도, 경도 정보 가져오기
-        val latitude : Double? = locationProvider.getLocationLatitude()
-        val longtitude : Double? = locationProvider.getLocationLongitude()
+        val latitude: Double? = locationProvider.getLocationLatitude()
+        val longtitude: Double? = locationProvider.getLocationLongitude()
 
-        if (latitude != null && longtitude != null){
+        if (latitude != null && longtitude != null) {
             //1. 현재 위치를 가져오고 UI를 업데이트
             val address = getCurrentAddress(latitude, longtitude)
             //address가 null이 아닌 경우에 실행
@@ -73,12 +74,13 @@ class MainActivity : AppCompatActivity() {
 
         }
         //위도, 경도 둘 중 하나라도 null 값이면
-        else{
+        else {
             Toast.makeText(this, "위도, 경도 정보를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
         }
 
     }
-    private fun getAirQualityData(latitude: Double, longitude: Double){
+
+    private fun getAirQualityData(latitude: Double, longitude: Double) {
         var retrofitAPI = RetrofitConnection.getInstance().create(
             //AirQualityService의 구현체?를 retrofit이 만들어줌
             AirQualityService::class.java
@@ -88,23 +90,25 @@ class MainActivity : AppCompatActivity() {
             latitude.toString(),
             longitude.toString(),
             "ab668cb6-f7ea-4beb-8a3b-6e56bea7b7ff"
-        ).enqueue(object : Callback<AirQualityResponse>{
+        ).enqueue(object : Callback<AirQualityResponse> {
             //onResponse : response가 왔을 때 실행되는 함수
             override fun onResponse(
                 call: Call<AirQualityResponse>,
                 response: Response<AirQualityResponse>
             ) {
-                if (response.isSuccessful){
+                if (response.isSuccessful) {
                     Toast.makeText(this@MainActivity, "최신 데이터 업데이트 완료!", Toast.LENGTH_SHORT).show()
                     //가져온 데이터 보기, 가져온 데이터가 null이 아니면 ui에 업데이트
                     response.body()?.let {
                         updateAirUI(it)
                     }
 
-                }else{
-                    Toast.makeText(this@MainActivity, "데이터를 가져오는 데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this@MainActivity, "데이터를 가져오는 데 실패했습니다.", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
+
             //데이터 호출을 실패했을 때 호출할 함수
             override fun onFailure(call: Call<AirQualityResponse>, t: Throwable) {
                 Toast.makeText(this@MainActivity, "데이터를 가져오는 데 실패했습니다.", Toast.LENGTH_SHORT).show()
@@ -115,32 +119,35 @@ class MainActivity : AppCompatActivity() {
         //처리하는 방식 -> execute() : 동기 실행, enqueue() : 비동기 실행
 
     }
-    private fun updateAirUI(airQualityData : AirQualityResponse){
+
+    private fun updateAirUI(airQualityData: AirQualityResponse) {
         val pollutionData = airQualityData.data.current.pollution
 
         //수치를 지정
         binding.tvCount.text = pollutionData.aqius.toString()
 
         //측정된 날짜
-        val dateTime = ZonedDateTime.parse(pollutionData.ts).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime()
+        val dateTime =
+            ZonedDateTime.parse(pollutionData.ts).withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+                .toLocalDateTime()
         val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
         binding.tvCheckTime.text = dateTime.format(dateFormatter).toString()
 
-        when(pollutionData.aqius){
-            in 0..50->{
+        when (pollutionData.aqius) {
+            in 0..50 -> {
                 binding.tvTitle.text = "좋음"
                 binding.imgBg.setImageResource(R.drawable.bg_good)
             }
-            in 51..150->{
+            in 51..150 -> {
                 binding.tvTitle.text = "보통"
                 binding.imgBg.setImageResource(R.drawable.bg_soso)
             }
-            in 151..200->{
+            in 151..200 -> {
                 binding.tvTitle.text = "나쁨"
                 binding.imgBg.setImageResource(R.drawable.bg_bad)
             }
-            else ->{
+            else -> {
                 binding.tvTitle.text = "매우 나쁨"
                 binding.imgBg.setImageResource(R.drawable.bg_worst)
             }
@@ -148,33 +155,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setRefreshButton(){
+    private fun setRefreshButton() {
         binding.btnRefresh.setOnClickListener {
             updateUI()
         }
     }
 
     //지오코딩 : 위도와 경도를 가지고 지명 이름 가져오기
-    private fun getCurrentAddress(latitude: Double, longitude:Double) : Address? {
+    private fun getCurrentAddress(latitude: Double, longitude: Double): Address? {
         //지오코더 객체를 생성, getDefault를 활용해 휴대폰의 디폴트 위치를 가져옴(대한민국) -> 헷갈리니 그냥 korea로 변경
         val geoCoder = Geocoder(this, Locale.KOREA)
         //지오코딩을 활용해 위치정보의 지명을 가져올 때는 여러 개를 받음 -> List로 저장
-        val addresses : List<Address>?
+        val addresses: List<Address>?
         //위도, 경도 사용해서 지명 가져오기, 최대 7개까지만 받아오기 -> 어차피 하나만 쓸꺼긴 함
         addresses = try {
-            geoCoder.getFromLocation(latitude,longitude, 7)
-        } catch (ioException : IOException){
+            geoCoder.getFromLocation(latitude, longitude, 7)
+        } catch (ioException: IOException) {
             //값이 들어오지 않은 경우
             Toast.makeText(this, "지오코더 서비스를 이용불가 합니다.", Toast.LENGTH_SHORT).show()
             return null
-        } catch (illegalArgumentException : java.lang.IllegalArgumentException){
+        } catch (illegalArgumentException: java.lang.IllegalArgumentException) {
             //들어온 값이 잘못된 경우
             Toast.makeText(this, "잘못된 위도, 경도 입니다.", Toast.LENGTH_SHORT).show()
             return null
         }
 
         //위도, 경도 값에는 문제가 없으나 주소가 없는 경우
-        if(addresses == null || addresses.size == 0){
+        if (addresses == null || addresses.size == 0) {
             Toast.makeText(this, "주소가 발견되지 않았습니다.", Toast.LENGTH_SHORT).show()
             return null
 
@@ -272,15 +279,14 @@ class MainActivity : AppCompatActivity() {
         //런처를 활용해 intent의 결과값을 리턴해주며 intent
         getGPSPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
-        ){
+        ) {
             //return 받은 결과값이 ok면
-            result ->
-            if (result.resultCode == Activity.RESULT_OK){
+                result ->
+            if (result.resultCode == Activity.RESULT_OK) {
 
-                if(isLocationServicesAvailable()){
+                if (isLocationServicesAvailable()) {
                     isRunTimePermissionsGranted()
-                }
-                else{
+                } else {
                     Toast.makeText(
                         this@MainActivity,
                         "위치 서비스를 사용할 수 없습니다.",
@@ -290,11 +296,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        val builder : AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
+        val builder: AlertDialog.Builder = AlertDialog.Builder(this@MainActivity)
         builder.setTitle("위치 서비스 비활성화")
         builder.setMessage("위치 서비스가 꺼져있습니다. 설정해야 앱을 사용할 수 있습니다.")
         builder.setCancelable(true)
-        builder.setPositiveButton("설정", DialogInterface.OnClickListener{dialogInterface, i ->
+        builder.setPositiveButton("설정", DialogInterface.OnClickListener { dialogInterface, i ->
             //안드로이드 기기 설정앱의 GPS 설정 페이지로 이동
             //GPS 설정 결과를 가져올 것이므로 launcher를 활용
             val callGPSSettingIntent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
