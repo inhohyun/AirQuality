@@ -17,7 +17,16 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.ihh.airquality.databinding.ActivityMainBinding
+import com.ihh.airquality.retrofit.AirQualityResponse
+import com.ihh.airquality.retrofit.AirQualityService
+import com.ihh.airquality.retrofit.RetrofitConnection
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.io.IOException
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -60,6 +69,8 @@ class MainActivity : AppCompatActivity() {
                 binding.tvLocationSubtitle.text = "${it.countryName} ${it.adminArea}"
             }
             //2. 미세먼지 농도를 가져오고 UI를 업데이트
+            getAirQualityData(latitude, longtitude)
+
         }
         //위도, 경도 둘 중 하나라도 null 값이면
         else{
@@ -67,6 +78,76 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+    private fun getAirQualityData(latitude: Double, longitude: Double){
+        var retrofitAPI = RetrofitConnection.getInstance().create(
+            //AirQualityService의 구현체?를 retrofit이 만들어줌
+            AirQualityService::class.java
+        )
+
+        retrofitAPI.getAirQualityData(
+            latitude.toString(),
+            longitude.toString(),
+            "ab668cb6-f7ea-4beb-8a3b-6e56bea7b7ff"
+        ).enqueue(object : Callback<AirQualityResponse>{
+            //onResponse : response가 왔을 때 실행되는 함수
+            override fun onResponse(
+                call: Call<AirQualityResponse>,
+                response: Response<AirQualityResponse>
+            ) {
+                if (response.isSuccessful){
+                    Toast.makeText(this@MainActivity, "최신 데이터 업데이트 완료!", Toast.LENGTH_SHORT).show()
+                    //가져온 데이터 보기, 가져온 데이터가 null이 아니면 ui에 업데이트
+                    response.body()?.let {
+                        updateAirUI(it)
+                    }
+
+                }else{
+                    Toast.makeText(this@MainActivity, "데이터를 가져오는 데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            //데이터 호출을 실패했을 때 호출할 함수
+            override fun onFailure(call: Call<AirQualityResponse>, t: Throwable) {
+                Toast.makeText(this@MainActivity, "데이터를 가져오는 데 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        )
+        //Call : retrofit에서 요청을 처리하는 객체
+        //처리하는 방식 -> execute() : 동기 실행, enqueue() : 비동기 실행
+
+    }
+    private fun updateAirUI(airQualityData : AirQualityResponse){
+        val pollutionData = airQualityData.data.current.pollution
+
+        //수치를 지정
+        binding.tvCount.text = pollutionData.aqius.toString()
+
+        //측정된 날짜
+        val dateTime = ZonedDateTime.parse(pollutionData.ts).withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDateTime()
+        val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+        binding.tvCheckTime.text = dateTime.format(dateFormatter).toString()
+
+        when(pollutionData.aqius){
+            in 0..50->{
+                binding.tvTitle.text = "좋음"
+                binding.imgBg.setImageResource(R.drawable.bg_good)
+            }
+            in 51..150->{
+                binding.tvTitle.text = "보통"
+                binding.imgBg.setImageResource(R.drawable.bg_soso)
+            }
+            in 151..200->{
+                binding.tvTitle.text = "나쁨"
+                binding.imgBg.setImageResource(R.drawable.bg_bad)
+            }
+            else ->{
+                binding.tvTitle.text = "매우 나쁨"
+                binding.imgBg.setImageResource(R.drawable.bg_worst)
+            }
+
+        }
+    }
+
     //지오코딩 : 위도와 경도를 가지고 지명 이름 가져오기
     private fun getCurrentAddress(latitude: Double, longitude:Double) : Address? {
         //지오코더 객체를 생성, getDefault를 활용해 휴대폰의 디폴트 위치를 가져옴(대한민국) -> 헷갈리니 그냥 korea로 변경
