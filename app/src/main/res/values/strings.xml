@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AirQuality</string>
+    <string name="measured_at">측정 시간</string>
+</resources>
