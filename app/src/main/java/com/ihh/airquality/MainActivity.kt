@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
 
         checkAllPermissions()
         updateUI()
-
+        setRefreshButton()
     }
 
     private fun updateUI(){
@@ -145,6 +145,12 @@ class MainActivity : AppCompatActivity() {
                 binding.imgBg.setImageResource(R.drawable.bg_worst)
             }
 
+        }
+    }
+
+    private fun setRefreshButton(){
+        binding.btnRefresh.setOnClickListener {
+            updateUI()
         }
     }
 
