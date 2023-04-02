@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -14,10 +15,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AirQuality"
         tools:targetApi="31">
-        <!--        구글맵을 사용하기 위한 api 키를 meta-data로 저장-->
+        <activity
+            android:name=".MapActivity"
+            android:exported="false" />
+        <!-- 구글맵을 사용하기 위한 api 키를 meta-data로 저장 -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBk0BvZQKJ6Nu51CRy2l0Bzx9Z12pdRw0s"/>
+            android:value="AIzaSyBk0BvZQKJ6Nu51CRy2l0Bzx9Z12pdRw0s" />
 
         <activity
             android:name=".MainActivity"
