@@ -198,7 +198,7 @@ class MainActivity : AppCompatActivity() {
             //putExtra : 액티비티에서 액티비티로 이동할때, 데이터를 추가로 넘겨줄 수 있음
             //이 값을 토대로 mapActivity에서 지도의 위치를 표시할 것임
             intent.putExtra("currentLat", latitude)
-            intent.putExtra("currentLon", longitude)
+            intent.putExtra("currentLng", longitude)
             //launch : mapActivity에서 설정한 값을 mainAcitivity에서 가져오기 위해 사용 : 다시 돌아왔을 때 위에 override한 onAcitivtyResult 함수가 실행됨
             startMapActivityResult.launch(intent)
         }
