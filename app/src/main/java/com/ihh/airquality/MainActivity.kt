@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -35,12 +37,35 @@ class MainActivity : AppCompatActivity() {
 
     //권한을 요청받을 상수값
     private val PERMISSION_REQUEST_CODE = 100
+
+    //위도와 경도를 저장해놓을 변수
+    var latitude : Double? = 0.0
+    var longitude : Double? = 0.0
+
     val REQUIRED_PERMISSIONS = arrayOf(
         android.Manifest.permission.ACCESS_FINE_LOCATION,
         android.Manifest.permission.ACCESS_COARSE_LOCATION
     )
-
+    //설정앱을 열고 다시 돌아왔을 때 정보를 가져오기
     lateinit var getGPSPermissionLauncher: ActivityResultLauncher<Intent>
+
+    //callback 함수에서 ActivityResult 값을 받았을 때 onActivityResult 함수 실행행
+    //map에서 다시 MainActivity로 돌아왔을 때, 아래 함수가 실행됨
+   val startMapActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult(),
+    object : ActivityResultCallback<ActivityResult>{
+        //launcher를 통해 launch를 한뒤 다시 돌아왔을 때 아래 함수가 실행됨 : result로 가져온 데이터 값을 받는듯
+        override fun onActivityResult(result: ActivityResult?) {
+            //다시 돌아왔을 때 resultCode를 보고 이것이 RESULT_OK이면 result의 데이터를 확인하는데,
+            //이때, result의 latitude(위도), longtitude(경도)의 데이터를 지역변수에 저장한다.
+            if (result?.resultCode?: 0 == Activity.RESULT_OK){
+                latitude = result?.data?.getDoubleExtra("latitude", 0.0) ?:0.0
+                longitude = result?.data?.getDoubleExtra("longitude", 0.0) ?:0.0
+                //새로운 위도, 경도 데이터를 가지고 ui에 업데이트 해주기
+                updateUI()
+            }
+        }
+    }
+        )
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -49,19 +74,25 @@ class MainActivity : AppCompatActivity() {
         checkAllPermissions()
         updateUI()
         setRefreshButton()
+
+        setFab()
     }
 
     private fun updateUI() {
         //MainActivity의 context를 넣어서 이를 기반으로 만들어둔 LocationProvider 클래스의 함수를 활용해서 위도, 경도를 저장
         locationProvider = LocationProvider(this@MainActivity)
+        //위도, 경도가 없을 때만
+        if (latitude == 0.0 && longitude == 0.0){
+            //위도, 경도 정보 가져오기
+            latitude = locationProvider.getLocationLatitude()
+            longitude = locationProvider.getLocationLongitude()
+        }
 
-        //위도, 경도 정보 가져오기
-        val latitude: Double? = locationProvider.getLocationLatitude()
-        val longtitude: Double? = locationProvider.getLocationLongitude()
 
-        if (latitude != null && longtitude != null) {
+
+        if (latitude != null && longitude != null) {
             //1. 현재 위치를 가져오고 UI를 업데이트
-            val address = getCurrentAddress(latitude, longtitude)
+            val address = getCurrentAddress(latitude!!, longitude!!)
             //address가 null이 아닌 경우에 실행
             address?.let {
                 //thoroughfare : 역삼1동 2동 등의 주소
@@ -70,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                 binding.tvLocationSubtitle.text = "${it.countryName} ${it.adminArea}"
             }
             //2. 미세먼지 농도를 가져오고 UI를 업데이트
-            getAirQualityData(latitude, longtitude)
+            getAirQualityData(latitude!!, longitude!!)
 
         }
         //위도, 경도 둘 중 하나라도 null 값이면
@@ -161,6 +192,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setFab(){
+        binding.fab.setOnClickListener {
+            val intent = Intent(this, MapActivity::class.java)
+            //putExtra : 액티비티에서 액티비티로 이동할때, 데이터를 추가로 넘겨줄 수 있음
+            //이 값을 토대로 mapActivity에서 지도의 위치를 표시할 것임
+            intent.putExtra("currentLat", latitude)
+            intent.putExtra("currentLon", longitude)
+            //launch : mapActivity에서 설정한 값을 mainAcitivity에서 가져오기 위해 사용 : 다시 돌아왔을 때 위에 override한 onAcitivtyResult 함수가 실행됨
+            startMapActivityResult.launch(intent)
+        }
+    }
     //지오코딩 : 위도와 경도를 가지고 지명 이름 가져오기
     private fun getCurrentAddress(latitude: Double, longitude: Double): Address? {
         //지오코더 객체를 생성, getDefault를 활용해 휴대폰의 디폴트 위치를 가져옴(대한민국) -> 헷갈리니 그냥 korea로 변경
