@@ -1,5 +1,7 @@
 package com.ihh.airquality
 
+import android.app.Activity
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.google.android.gms.maps.CameraUpdate
@@ -31,6 +33,36 @@ class MapActivity : AppCompatActivity() , OnMapReadyCallback{
         //callback을 this로 전달할 수 있는 이유? : MapActivity에서 onMapReadyCallback 인터페이스가 구현되어있기 때문
         //getMapAsync : 지도가 준비되면 callback이 실행될 수 있도록 비동기적으로 실행해주는 것(결국 지도를 불러오는 역할)
         mapFragment?.getMapAsync(this)
+
+
+        setButton()
+    }
+    private fun setButton(){
+        binding.btnCheckHere.setOnClickListener {
+            mMap?.let {
+                val intent = Intent() //데이터를 넣기 위한 intent
+
+
+                intent.putExtra("latitude", it.cameraPosition.target.latitude) // 카메라에 따른 위도 정보 보내기
+                intent.putExtra("longitude", it.cameraPosition.target.longitude) // 카메라에 따른 경도 정보 보내기
+                setResult(Activity.RESULT_OK, intent) //MainActivity에서 result가 RESULT_OK(RESULT_CANCELED 등으로 보내면 안됨)여야 정보를 받아오는 것으로 처리했으므로 RESULT_OK와 intent의 정보를 result로 보낸다.
+                // mapAcitivuty를 끄기만 해도 backStack에 있는 MainActivity로 이동할 것이기 때문에 따로 intent할 필요 없음, A -> B -> A(x)
+                finish()
+            }
+        }
+
+        //현재위치로 이동하는 버튼 구현
+        binding.fabCurrentLocation.setOnClickListener {
+            val locationProvider = LocationProvider(this@MapActivity)
+
+            //locationProvider를 이용해 현재 위도, 경도 값 가져오기
+            val latitude = locationProvider.getLocationLatitude()
+            val longitude = locationProvider.getLocationLongitude()
+
+            //현재 위치로 카메라 이동시키기기
+           mMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(latitude!!, longitude!!), 16f))
+            setMarker()
+        }
     }
 
     //지도가 준비되면 onMapReady 함수가 실행됨됨
