@@ -8,6 +8,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.ihh.airquality.databinding.ActivityMapBinding
 
 //onMapReadyCallback : 지도가 준비되었을 때 실행되는 콜백
@@ -46,6 +47,30 @@ class MapActivity : AppCompatActivity() , OnMapReadyCallback{
             it.setMinZoomPreference(12.0f)
             //현재 위치로 카메라 이동시키기
             it.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 16f))
+            setMarker()
+        }
+    }
+
+    private fun setMarker(){
+        //지도가 있어야 마커를 실행할 수 있기 때문에 null이 아닐때문 실행하도록 설정
+        mMap?.let{
+            //지도 위의 마커를 모두 지워주고 시작(내가 설정한 위치만 뜨도록 초기화)
+            it.clear()
+
+            val markerOption = MarkerOptions()
+            //카메라의 위치에 마커 띄우기
+            markerOption.position(it.cameraPosition.target)
+            markerOption.title("마커 위치")
+            //마커를 변수화
+            val marker = it.addMarker(markerOption)
+            //사용자에 따른 카메라의 이동에 마커도 반응하도록 설정
+            it.setOnCameraIdleListener {
+            marker?.let { marker ->
+                //이때 it은 mMap을 뜻함(람다식 활용)
+               marker.position = it.cameraPosition.target
+            }
+
+            }
         }
     }
 }
