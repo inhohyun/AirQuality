@@ -19,10 +19,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.*
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.ihh.airquality.databinding.ActivityMainBinding
 import com.ihh.airquality.retrofit.AirQualityResponse
 import com.ihh.airquality.retrofit.AirQualityService
@@ -37,6 +36,7 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+    var mInterstitialAd: InterstitialAd? = null
     lateinit var binding: ActivityMainBinding
     lateinit var locationProvider: LocationProvider
 
@@ -44,34 +44,37 @@ class MainActivity : AppCompatActivity() {
     private val PERMISSION_REQUEST_CODE = 100
 
     //위도와 경도를 저장해놓을 변수
-    var latitude : Double? = 0.0
-    var longitude : Double? = 0.0
+    var latitude: Double? = 0.0
+    var longitude: Double? = 0.0
 
     val REQUIRED_PERMISSIONS = arrayOf(
         android.Manifest.permission.ACCESS_FINE_LOCATION,
         android.Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
     //설정앱을 열고 다시 돌아왔을 때 정보를 가져오기
     lateinit var getGPSPermissionLauncher: ActivityResultLauncher<Intent>
 
     //callback 함수에서 ActivityResult 값을 받았을 때 onActivityResult 함수 실행행
     //map에서 다시 MainActivity로 돌아왔을 때, 아래 함수가 실행됨
-   val startMapActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult(),
-    object : ActivityResultCallback<ActivityResult>{
-        //launcher를 통해 launch를 한뒤 다시 돌아왔을 때 아래 함수가 실행됨 : result로 가져온 데이터 값을 받는듯
-        override fun onActivityResult(result: ActivityResult?) {
-            //다시 돌아왔을 때 resultCode를 보고 이것이 RESULT_OK이면 result의 데이터를 확인하는데,
-            //이때, result의 latitude(위도), longtitude(경도)의 데이터를 지역변수에 저장한다.
-            if (result?.resultCode?: 0 == Activity.RESULT_OK){
-                latitude = result?.data?.getDoubleExtra("latitude", 0.0) ?:0.0
-                longitude = result?.data?.getDoubleExtra("longitude", 0.0) ?:0.0
-                //새로운 위도, 경도 데이터를 가지고 ui에 업데이트 해주기
-                updateUI()
-            }
+    val startMapActivityResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult(),
+            object : ActivityResultCallback<ActivityResult> {
+                //launcher를 통해 launch를 한뒤 다시 돌아왔을 때 아래 함수가 실행됨 : result로 가져온 데이터 값을 받는듯
+                override fun onActivityResult(result: ActivityResult?) {
+                    //다시 돌아왔을 때 resultCode를 보고 이것이 RESULT_OK이면 result의 데이터를 확인하는데,
+                    //이때, result의 latitude(위도), longtitude(경도)의 데이터를 지역변수에 저장한다.
+                    if (result?.resultCode ?: 0 == Activity.RESULT_OK) {
+                        latitude = result?.data?.getDoubleExtra("latitude", 0.0) ?: 0.0
+                        longitude = result?.data?.getDoubleExtra("longitude", 0.0) ?: 0.0
+                        //새로운 위도, 경도 데이터를 가지고 ui에 업데이트 해주기
+                        updateUI()
+                    }
 
-        }
-    }
+                }
+            }
         )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -84,7 +87,42 @@ class MainActivity : AppCompatActivity() {
         setFab()
         setBannerAds()
     }
-    private fun setBannerAds(){
+
+    //생명주기 상 액티비티로 다시 돌아왔을 때 onCreate가 실행되지 않음
+    //따라서 mainActivity로 돌아왔을 때 새로운 광고를 불러오기 위해서 onResume에 전면광고 함수 작성
+    override fun onResume() {
+        super.onResume()
+        setInterstitialAds()
+    }
+
+    //전면광고를 불러오는 함수
+    private fun setInterstitialAds() {
+        val adRequest = AdRequest.Builder().build()
+
+        InterstitialAd.load(
+            this,
+            "ca-app-pub-3940256099942544/1033173712",
+            adRequest,
+            object : InterstitialAdLoadCallback() {
+
+                override fun onAdLoaded(p0: InterstitialAd) {
+                    super.onAdLoaded(p0)
+
+                    Log.d("Ads Log", "전면 광고가 로드 성공했습니다.")
+                    //변수에 광고 저장하기
+                    mInterstitialAd = p0
+
+                }
+
+                override fun onAdFailedToLoad(p0: LoadAdError) {
+                    super.onAdFailedToLoad(p0)
+                    Log.d("Ads Log", "전면 광고가 로드 실패했습니다.")
+
+                }
+            })
+    }
+
+    private fun setBannerAds() {
         //광고 초기화
         MobileAds.initialize(this)
         //광고 요청해서 빌드하기
@@ -92,18 +130,20 @@ class MainActivity : AppCompatActivity() {
         //작성한 배너 광고 뷰에 요청한 광고 로딩하기
         binding.adsBanner.loadAd(adRequest)
         //광고 리스너에 따른 리스너 인터페이스 구현
-        binding.adsBanner.adListener = object : AdListener(){
+        binding.adsBanner.adListener = object : AdListener() {
             //ad가 load되었을 때
             override fun onAdLoaded() {
                 super.onAdLoaded()
                 Log.d("Ads Log", "배너 광고가 로드 되었습니다.")
             }
+
             //실패했을 때
             override fun onAdFailedToLoad(p0: LoadAdError) {
                 super.onAdFailedToLoad(p0)
                 Log.d("Ads Log", "배너 광고가 실패 되었습니다.")
 
             }
+
             //배너 광고를 클릭했을 때
             override fun onAdClicked() {
                 super.onAdClicked()
@@ -112,11 +152,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun updateUI() {
         //MainActivity의 context를 넣어서 이를 기반으로 만들어둔 LocationProvider 클래스의 함수를 활용해서 위도, 경도를 저장
         locationProvider = LocationProvider(this@MainActivity)
         //위도, 경도가 없을 때만
-        if (latitude == 0.0 && longitude == 0.0){
+        if (latitude == 0.0 && longitude == 0.0) {
             //위도, 경도 정보 가져오기
             latitude = locationProvider.getLocationLatitude()
             longitude = locationProvider.getLocationLongitude()
@@ -226,17 +267,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setFab(){
+    private fun setFab() {
         binding.fab.setOnClickListener {
-            val intent = Intent(this, MapActivity::class.java)
-            //putExtra : 액티비티에서 액티비티로 이동할때, 데이터를 추가로 넘겨줄 수 있음
-            //이 값을 토대로 mapActivity에서 지도의 위치를 표시할 것임
-            intent.putExtra("currentLat", latitude)
-            intent.putExtra("currentLng", longitude)
-            //launch : mapActivity에서 설정한 값을 mainAcitivity에서 가져오기 위해 사용 : 다시 돌아왔을 때 위에 override한 onAcitivtyResult 함수가 실행됨
-            startMapActivityResult.launch(intent)
+
+            //전면 광고가 로딩이 되었다면
+            if (mInterstitialAd != null) {
+                mInterstitialAd!!.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    //전면광고가 정상적으로 실행되었다가 닫혔을 때
+                    override fun onAdDismissedFullScreenContent() {
+                        super.onAdDismissedFullScreenContent()
+                        Log.d("Ads Log", "전면 광고가 닫혔습니다.")
+
+                        //this가 뭘 가르기는지 모르기때문에 에러 발생 : 어노테이션을 활용해 MainActivity를 가르킴을 알려주기
+                        val intent = Intent(this@MainActivity, MapActivity::class.java)
+                        //putExtra : 액티비티에서 액티비티로 이동할때, 데이터를 추가로 넘겨줄 수 있음
+                        //이 값을 토대로 mapActivity에서 지도의 위치를 표시할 것임
+                        intent.putExtra("currentLat", latitude)
+                        intent.putExtra("currentLng", longitude)
+                        //launch : mapActivity에서 설정한 값을 mainAcitivity에서 가져오기 위해 사용 : 다시 돌아왔을 때 위에 override한 onAcitivtyResult 함수가 실행됨
+                        startMapActivityResult.launch(intent)
+                    }
+
+                    //실패
+                    override fun onAdFailedToShowFullScreenContent(p0: AdError) {
+                        super.onAdFailedToShowFullScreenContent(p0)
+                        Log.d("Ads Log", "전면 광고 열기 실패했습니다.")
+
+                    }
+
+                    //전면 광고가 실행 되었을 때
+                    override fun onAdShowedFullScreenContent() {
+                        super.onAdShowedFullScreenContent()
+                        Log.d("Ads Log", "전면 광고 열기 성공했습니다.")
+                        //한번 쓴 광고를 또 보여주진 않으므로 초기화(매번 다른 광고가 나와야함)
+                        mInterstitialAd == null
+
+
+                    }
+                }
+                //MainActivity에서 전면 광고를 보여줄 것임
+                mInterstitialAd!!.show(this@MainActivity)
+            } else {
+                Log.d("Ads Log", "전면 광고가 로딩이 안됐습니다.")
+                Toast.makeText(this, "잠시 후 시도해주세요.", Toast.LENGTH_LONG).show()
+            }
+
         }
+
     }
+
     //지오코딩 : 위도와 경도를 가지고 지명 이름 가져오기
     private fun getCurrentAddress(latitude: Double, longitude: Double): Address? {
         //지오코더 객체를 생성, getDefault를 활용해 휴대폰의 디폴트 위치를 가져옴(대한민국) -> 헷갈리니 그냥 korea로 변경
