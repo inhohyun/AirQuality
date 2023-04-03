@@ -10,6 +10,7 @@ import android.location.LocationManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultCallback
@@ -18,6 +19,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
 import com.ihh.airquality.databinding.ActivityMainBinding
 import com.ihh.airquality.retrofit.AirQualityResponse
 import com.ihh.airquality.retrofit.AirQualityService
@@ -63,6 +68,7 @@ class MainActivity : AppCompatActivity() {
                 //새로운 위도, 경도 데이터를 가지고 ui에 업데이트 해주기
                 updateUI()
             }
+
         }
     }
         )
@@ -76,8 +82,36 @@ class MainActivity : AppCompatActivity() {
         setRefreshButton()
 
         setFab()
+        setBannerAds()
     }
+    private fun setBannerAds(){
+        //광고 초기화
+        MobileAds.initialize(this)
+        //광고 요청해서 빌드하기
+        val adRequest = AdRequest.Builder().build()
+        //작성한 배너 광고 뷰에 요청한 광고 로딩하기
+        binding.adsBanner.loadAd(adRequest)
+        //광고 리스너에 따른 리스너 인터페이스 구현
+        binding.adsBanner.adListener = object : AdListener(){
+            //ad가 load되었을 때
+            override fun onAdLoaded() {
+                super.onAdLoaded()
+                Log.d("Ads Log", "배너 광고가 로드 되었습니다.")
+            }
+            //실패했을 때
+            override fun onAdFailedToLoad(p0: LoadAdError) {
+                super.onAdFailedToLoad(p0)
+                Log.d("Ads Log", "배너 광고가 실패 되었습니다.")
 
+            }
+            //배너 광고를 클릭했을 때
+            override fun onAdClicked() {
+                super.onAdClicked()
+                Log.d("Ads Log", "배너 광고가 클릭 되었습니다.")
+
+            }
+        }
+    }
     private fun updateUI() {
         //MainActivity의 context를 넣어서 이를 기반으로 만들어둔 LocationProvider 클래스의 함수를 활용해서 위도, 경도를 저장
         locationProvider = LocationProvider(this@MainActivity)
